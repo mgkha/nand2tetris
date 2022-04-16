@@ -1,0 +1,14 @@
+/**
+ * 4-way Or: 
+ * out = (a or b or c or d)
+ */
+
+CHIP Or4Way {
+    IN a, b, c, d;
+    OUT out;
+
+    PARTS:
+    Or(a=a, b=b, out=ab);
+    Or(a=ab, b=c, out=abc);
+    Or(a=abc, b=d, out=out);
+}
