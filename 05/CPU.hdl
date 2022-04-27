@@ -25,6 +25,10 @@
  * than to the address resulting from executing the current instruction. 
  */
 
+//                              A               D               M
+// destination bits - ddd - instruction[5] instruction[4] instruction[3]
+
+
 CHIP CPU {
 
     IN  inM[16],         // M value input  (M = contents of RAM[A])
@@ -39,5 +43,58 @@ CHIP CPU {
         pc[15];          // address of next instruction
 
     PARTS:
-    // Put your code here:
+    // control between the input instruction and ALU output (set control bit to instruction[15])
+    Mux16(a=instruction, b=aluOut, sel=instruction[15], out=inA);
+
+    // if (the input instruction is C instruction) → loadA to 3rd bit of ddd (destination to A) ; instruction[5]
+    // else set loadA to true (because the input instruction is A instruction)
+    And(a=instruction[15], b=instruction[5], out=insC);
+    Mux(a=true, b=insC, sel=instruction[15], out=loadA);
+    ARegister(in=inA, load=loadA, out=outA, out[0..14]=addressM);
+    
+    // if (the input instruction is C instruction) → loadA to 2nd bit of ddd (destination to D) ; instruction[4]
+    And(a=instruction[15], b=instruction[4], out=loadC); 
+    DRegister(in=aluOut, load=loadC, out=aluInX);
+
+    // control between the value from ARegister and the input value from Memory
+    // set control bit to 'a' bit from the input instruction (111accccccdddjjj) ; instruction[12]
+    Mux16(a=outA, b=inM, sel=instruction[12], out=aluInY);
+
+    ALU(x=aluInX, y=aluInY, zx=instruction[11], nx=instruction[10], zy=instruction[9], ny=instruction[8], f=instruction[7], no=instruction[6], out=aluOut, out=outM, zr=zr, ng=ng);
+ 
+    // if (the input instruction is C instruction) and (1st bit of jjj is 1) → output writeM to true
+    And(a=instruction[15], b=instruction[3], out=writeM);
+
+    // jjj = instruction[2] instruction[1] instruction[0]
+    DMux8Way(in=true, sel=instruction[0..2], a=null, b=jgt, c=jeq, d=jge, e=jlt, f=jne, g=jle, h=jmp);
+    
+    // outM is equal to 0
+    And(a=jeq, b=zr, out=JEQ);
+    
+    // outM is not equal to 0
+    Not(in=zr, out=nzr);
+    And(a=jne, b=nzr, out=JNE);
+
+    // outM is less than 0
+    And(a=jlt, b=ng, out=JLT);
+    
+    // outM is less than or equal to 0
+    Or(a=ng, b=zr, out=ngzr);
+    And(a=jle, b=ngzr, out=JLE);
+
+    // outM is greater than 0
+    Not(in=ngzr, out=pt);
+    And(a=jgt, b=pt, out=JGT);
+
+    // outM is greater than or equal to 0
+    Or(a=pt, b=zr, out=ptzr);
+    And(a=jge, b=ptzr, out=JGE);
+ 
+    Or8Way(in[0]=JEQ, in[1]=JLT, in[2]=JNE, in[3]=JLE, in[4]=JGT, in[5]=JGE, in[6]=jmp, in[7]=false, out=w1);
+    
+    And(a=instruction[15], b=w1, out=jump);
+    Not(in=null, out=notJump);
+    And(a=jump, b=notJump, out=loadJump);
+
+    PC(in=outA, load=loadJump, inc=true, reset=reset, out[0..14]=pc);
 }
