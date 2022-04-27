@@ -68,31 +68,31 @@ CHIP CPU {
     // jjj = instruction[2] instruction[1] instruction[0]
     DMux8Way(in=true, sel=instruction[0..2], a=null, b=jgt, c=jeq, d=jge, e=jlt, f=jne, g=jle, h=jmp);
     
-    // outM is equal to 0
+    // outM is zero
     And(a=jeq, b=zr, out=JEQ);
     
-    // outM is not equal to 0
+    // outM is not zero
     Not(in=zr, out=nzr);
     And(a=jne, b=nzr, out=JNE);
 
-    // outM is less than 0
+    // outM is negative
     And(a=jlt, b=ng, out=JLT);
     
-    // outM is less than or equal to 0
+    // outM is negative or zero
     Or(a=ng, b=zr, out=ngzr);
     And(a=jle, b=ngzr, out=JLE);
 
-    // outM is greater than 0
+    // outM is positive
     Not(in=ngzr, out=pt);
     And(a=jgt, b=pt, out=JGT);
 
-    // outM is greater than or equal to 0
+    // outM is positive or zero
     Or(a=pt, b=zr, out=ptzr);
     And(a=jge, b=ptzr, out=JGE);  
     
     Or8Way(in[0]=JEQ, in[1]=JLT, in[2]=JNE, in[3]=JLE, in[4]=JGT, in[5]=JGE, in[6]=jmp, in[7]=false, out=cond);
     
-    // check if it is C instruction
+    // control jump if it is C instruction
     And(a=instruction[15], b=cond, out=loadJump);
 
     PC(in=outA, load=loadJump, inc=true, reset=reset, out[0..14]=pc);
